@@ -1,7 +1,7 @@
 #pragma once
 #include "stdafx.h"
 
-class Player :	public PhysicsActor
+class Player : public PhysicsActor
 {
 public:
 	Player();
@@ -19,4 +19,3 @@ private:
 	float _vx, _vy, _maxVx, _maxVy;
 	float _speed; // Speed of the object.
 };
-

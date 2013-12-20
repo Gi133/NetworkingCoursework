@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "Protocol.h"
 #include "GameOverlord.h"
 
 GameOverlord* GameOverlord::_instance = NULL;

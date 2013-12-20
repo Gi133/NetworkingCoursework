@@ -3,9 +3,9 @@
 
 Player::Player()
 {
-	_speed = 0.4f;
+	_speed = 100.0f;
 
-	_maxVx = _maxVy = 2.0f;
+	_maxVx = _maxVy = 200.0f;
 
 	// Set sprite and shape
 	this->SetColor(1.0f, 0.0f, 0.0f);
@@ -13,7 +13,7 @@ Player::Player()
 	this->SetSize(1.0f);
 	
 	// Set physics related to this object.
-	this->SetDensity(0.3f);
+	this->SetDensity(0.5f);
 	this->SetFriction(0.1f);
 	this->SetRestitution(0.2f);
 	this->SetShapeType(PhysicsActor::SHAPETYPE_CIRCLE);
@@ -31,7 +31,7 @@ Player::~Player()
 
 void Player::ApplyVerticalForce(float dy)
 {
-	_vy = dy * _speed;
+	_vy = dy * _speed * theWorld.GetDT();
 
 	if (_vy > _maxVy)
 		_vy = _maxVy;
@@ -41,7 +41,7 @@ void Player::ApplyVerticalForce(float dy)
 
 void Player::ApplyHorizontalForce(float dx)
 {
-	_vx = dx * _speed;
+	_vx = dx * _speed * theWorld.GetDT();
 
 	if (_vx > _maxVx)
 		_vx = _maxVx;

@@ -190,6 +190,7 @@ cd ..\Tools\BuildScripts\
     <ClInclude Include="GameOverlord.h" />
     <ClInclude Include="platforms\win\resource.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="Protocol.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
