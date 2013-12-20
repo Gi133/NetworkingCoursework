@@ -5,6 +5,7 @@
 
 #include "stdafx.h"
 #include "Player.h"
+#include "NetworkService.h"
 
 #define theGameOverlord GameOverlord::getInstance()
 
@@ -28,18 +29,23 @@ private:
 	void OnSetupSpectator(); // Function to initialize the spectator portion of the application.
 	void OnGame();
 	void OnSpectator();
+	void OnShutdown();
 
-	void GameInit(); // Remove when done.
+	bool CheckSnapshotTime(); // Returns true if it's time to send the snapshot.
 
 	void FindWorldBounds(); // Find the max values for X and Y so that they can be used in collision detection.
 
 	FullScreenActor _fullScreenActor;
 	AngelSampleHandle _bgm, _sfx;
 
+	NetworkService* _networkService;
+
 	Player* _player;
 
+	const float SNAPSHOT_TIME; // Update time (20ms)
+	float timer, snapshotTime;
 
-	enum gameState{Initialization, Menu, SetupGame, SetupSpectator, Game, Spectator} _gameState;
+	enum gameState{Initialization, Menu, SetupGame, SetupSpectator, Game, Spectator, Shutdown} _gameState;
 
 	Vector2 WorldMax, WorldMin;
 };

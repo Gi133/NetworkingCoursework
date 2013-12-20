@@ -11,27 +11,9 @@ GameOverlord& GameOverlord::getInstance()
 	return *_instance;
 }
 
-GameOverlord::GameOverlord()
+GameOverlord::GameOverlord() :SNAPSHOT_TIME (0.20f)
 {
 	_gameState = Initialization;
-}
-
-void GameOverlord::GameInit()
-{
-	theWorld.SetSideBlockers(true, 0.7f);
-
-	_fullScreenActor.SetSprite("Resources/Images/background.jpg");
-	theWorld.Add(&_fullScreenActor);
-
-	theSound.SetSoundCallback(this, &GameManager::SoundEnded);
-
-	_bgm = theSound.LoadSample("Resources/Sounds/bgm.mp3", true);
-	if (_bgm)
-		theSound.PlaySound(_bgm, 0.5f, true, 0);
-
-	_sfx = theSound.LoadSample("Resources/Sounds/sfx.wav", false);
-
-	FindWorldBounds();
 }
 
 void GameOverlord::Render()
@@ -70,6 +52,10 @@ void GameOverlord::Update()
 		OnGame();
 		break;
 	}
+	case Shutdown:
+	{
+		OnShutdown();
+	}
 	}
 }
 
@@ -85,6 +71,12 @@ void GameOverlord::Init()
 	// Initialize any variables and engine stuff you need.
 	theWorld.SetupPhysics(Vector2(0.0f, 0.0f));
 	theWorld.SetSideBlockers(true, 0.7f);
+
+	// Initialize the network.
+	_networkService = new NetworkService();
+
+	// Set player pointer to NULL.
+	_player = NULL;
 
 	// Set full-screen background.
 	_fullScreenActor.SetSprite("Resources/Images/menubackground.jpg");
@@ -111,13 +103,16 @@ void GameOverlord::OnMenu()
 	if (theInput.IsKeyDown('s'))
 		_gameState = SetupSpectator;
 	if (theInput.IsKeyDown('e'))
-		theWorld.StopGame();
+		_gameState = Shutdown;
 }
 
 void GameOverlord::OnSetupGame()
 {
 	// Change background image.
 	_fullScreenActor.SetSprite("Resources/Images/gamebackground.jpg");
+
+	// Set up the snapshot timer.
+	timer = theWorld.GetCurrentTimeSeconds();
 
 	_player = new Player();
 
@@ -141,9 +136,43 @@ void GameOverlord::OnGame()
 		_player->ApplyHorizontalForce(-1.0f);
 	if (theInput.IsKeyDown('d'))
 		_player->ApplyHorizontalForce(1.0f);
+
+	// Check if snapshot timer.
+	if (CheckSnapshotTime())
+	{
+		// Pack and send snapshot.
+		sysLog.Log("Snapshot time!");
+	}
 }
 
 void GameOverlord::OnSpectator()
 {
 
+}
+
+bool GameOverlord::CheckSnapshotTime()
+{
+	if (theWorld.GetTimeSinceSeconds(timer) >= SNAPSHOT_TIME)
+	{
+		// Reset timer.
+		timer = theWorld.GetCurrentTimeSeconds();
+		return true;
+	}
+	else
+		return false;
+}
+
+void GameOverlord::OnShutdown()
+{
+	_networkService->ShutdownWSA();
+	delete (_networkService);
+	_networkService = NULL;
+
+	if (_player)
+	{
+		delete(_player);
+		_player = NULL;
+	}
+	
+	theWorld.StopGame();
 }

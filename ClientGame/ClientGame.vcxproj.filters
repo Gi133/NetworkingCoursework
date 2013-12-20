@@ -30,6 +30,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="GameOverlord.cpp" />
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="NetworkService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="platforms\win\ClientGame.rc">
@@ -46,6 +47,7 @@
     <ClInclude Include="GameOverlord.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Protocol.h" />
+    <ClInclude Include="NetworkService.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Config\defaults.lua">
