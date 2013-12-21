@@ -3,6 +3,7 @@
 #include <string>
 
 #include "Protocol.h"
+#include "Player.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -21,13 +22,27 @@ public:
 	bool WantToRead();
 	bool WantToWrite();
 
-	void Send();
-	void Receive();
+	bool Send(MessageType messageType, Player* objectToSend = NULL);
+	bool Receive();
+
+	NetworkMessage getReceivedMessage(){ return receivedMessage; }
 
 	SOCKET getSocket(){ return sock; }
 
 private:
 	SOCKET sock;
 	sockaddr_in socketAddress;
+
+	NetworkMessage* PackMessage(NetworkMessage* networkMessage, MessageType messageType, Player* objectToSend);
+	void UnpackMessage(NetworkMessage* networkMessage);
+
+	// Buffer for incoming messages.
+	char recv_buf_[sizeof NetworkMessage];
+	int recv_count_;
+	NetworkMessage receivedMessage;
+
+	// Buffer for outgoing messages.
+	char send_buf_[100 * sizeof NetworkMessage];
+	int send_count_;
 };
 

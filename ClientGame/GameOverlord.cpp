@@ -141,7 +141,13 @@ void GameOverlord::OnGame()
 	if (CheckSnapshotTime())
 	{
 		// Pack and send snapshot.
-		sysLog.Log("Snapshot time!");
+		//sysLog.Log("Snapshot time!");
+		if (_networkService->Send(NETMESSAGE_UPDATE, _player))
+			sysLog.Log("Message sent successfully.");
+
+		if (_networkService->WantToRead())
+			if (_networkService->Receive())
+				sysLog.Log("Message received successfully.");
 	}
 }
 

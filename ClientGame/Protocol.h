@@ -10,7 +10,8 @@ enum MessageType
 	NETMESSAGE_CREATE_PLAYER = 1,
 	NETMESSAGE_CREATE_BOT = 2,
 	NETMESSAGE_UPDATE = 3,
-	NETMESSAGE_DELETE = 4
+	NETMESSAGE_DELETE = 4,
+	NETMESSAGE_HANDSHAKE = 5
 };
 
 // Message struct.
@@ -18,8 +19,10 @@ struct  NetworkMessage
 {
 	MessageType messageType; // Type of message.
 
-	std::string objectID; // ID/Name of the object this message is referring to.
-	float positionX, positionY, forceX, forceY; // Object's values to be passed along.
+	float timeStamp;
 
-	NetworkMessage() :messageType(NETMESSAGE_UNKNOWN), objectID(""), positionX(0), positionY(0), forceX(0), forceY(0) {}
+	std::string objectID; // ID/Name of the object this message is referring to.
+	Vector2 position, force;
+
+	NetworkMessage() :messageType(NETMESSAGE_UNKNOWN), timeStamp(0.0f), objectID(""), position(0.0f, 0.0f), force(0.0f, 0.0f) {}
 };

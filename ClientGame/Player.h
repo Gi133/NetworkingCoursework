@@ -10,6 +10,8 @@ public:
 	void ApplyVerticalForce(float dy); // Based on the number handed in, apply a positive or negative force.
 	void ApplyHorizontalForce(float dx); // Based on the number handed in, apply a positive of negative force.
 
+	Vector2 getForce(){ return Vector2(_vx, _vy); }
+
 	float getVX(){ return _vx; }
 	float getVY(){ return _vy; }
 	float getMaxVX(){ return _maxVx; }
