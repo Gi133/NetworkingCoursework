@@ -132,7 +132,7 @@ bool NetworkService::WantToRead()
 	fd.fd = sock;
 	fd.events = POLLIN;
 
-	result = WSAPoll(&fd, 1, 15);
+	result = WSAPoll(&fd, 1, 1);
 
 	if (result == 0)
 	{

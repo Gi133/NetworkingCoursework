@@ -57,9 +57,16 @@ void GameOverlord::Update()
 					  OnSpectator();
 					  break;
 	}
+	case ConnectionLost:
+	{
+						   OnConnectionLost();
+						   theWorld.PauseSimulation();
+						   break;
+	}
 	case Shutdown:
 	{
 					 OnShutdown();
+					 break;
 	}
 	}
 }
@@ -84,6 +91,8 @@ void GameOverlord::Init()
 	_bot = NULL;
 
 	spectatorNumber = 0;
+	timeoutTimer = 0.0f;
+	timeoutWaitTime = 5.0f;
 
 	// Set full-screen background.
 	_fullScreenActor.SetSprite("Resources/Images/menubackground.jpg");
@@ -123,7 +132,8 @@ void GameOverlord::OnSetupGame()
 	// Set up the snapshot timer.
 	timer = theWorld.GetCurrentTimeSeconds();
 
-	_player = new Player();
+	_player = new Player(false);
+	_bot = new Player(true);
 
 	// Change game state.
 	_gameState = Game;
@@ -137,11 +147,11 @@ void GameOverlord::OnSetupSpectator()
 	// Change background image.
 	_fullScreenActor.SetSprite("Resources/Images/gamebackground.jpg");
 
+	sysLog.Log("Connection to game session.");
+
 	bool connected = false;
 	while (!connected)
 	{
-		DrawGameText("CONNECTING TO GAME SESSION...", "Console", theCamera.GetWindowWidth() / 3 * 2 - 150, theCamera.GetWindowHeight() / 3, 0.0f);
-
 		// Send Handshake to game client.
 		if (!_networkService->Send(NETMESSAGE_HANDSHAKE))
 			sysLog.Log("Error sending handshake message!");
@@ -170,6 +180,8 @@ void GameOverlord::OnSetupSpectator()
 
 void GameOverlord::OnGame()
 {
+	std::thread NetworkGameThread(&GameOverlord::OnGameNetworkThread, this);
+
 	// Process Input.
 	if (theInput.IsKeyDown('w'))
 		_player->ApplyVerticalForce(1.0f);
@@ -179,49 +191,76 @@ void GameOverlord::OnGame()
 		_player->ApplyHorizontalForce(-1.0f);
 	if (theInput.IsKeyDown('d'))
 		_player->ApplyHorizontalForce(1.0f);
+	if (theInput.IsKeyDown('q'))
+		_gameState = Shutdown;
 
-	// Check for handshakes and respond.
-	if (spectatorNumber < maxSpectatorNumber)
-	{
-		if (_networkService->Receive())
-		{
-			if (_networkService->getReceivedMessage().messageType == NETMESSAGE_HANDSHAKE)
-			{
-				sysLog.Log("Received Handshake, sending reply.");
-				_networkService->Send(NETMESSAGE_HANDSHAKE);
-				spectatorNumber++;
-			}
-		}
-	}
+	if (_bot)
+		_bot->AIUpdate(_player);
 
+	NetworkGameThread.join();
+}
+
+void GameOverlord::OnGameNetworkThread()
+{
 	// Check if snapshot timer.
 	if (CheckSnapshotTime())
 	{
+		// Check for handshakes and respond.
+		if (spectatorNumber < maxSpectatorNumber)
+		{
+			if (_networkService->Receive())
+			{
+				if (_networkService->getReceivedMessage().messageType == NETMESSAGE_HANDSHAKE)
+				{
+					sysLog.Log("Received Handshake, sending reply.");
+					_networkService->Send(NETMESSAGE_HANDSHAKE);
+					spectatorNumber++;
+				}
+			}
+		}
+
 		if (spectatorNumber > 0)
 		{
 			// Pack and send snapshot.
-			if (_networkService->Send(NETMESSAGE_UPDATE, _player))
-				sysLog.Log("Message sent successfully.");
+			if (_player)
+			{
+				if (_networkService->Send(NETMESSAGE_UPDATE, _player))
+					sysLog.Log("Message sent successfully.");
+			}
+
+			if (_bot)
+			{
+				if (_networkService->Send(NETMESSAGE_UPDATE, _bot))
+					sysLog.Log("Message sent successfully.");
+			}
 		}
 	}
 }
 
 void GameOverlord::OnSpectator()
 {
+	if (theInput.IsKeyDown('q'))
+		_gameState = Shutdown;
+
 	if (_networkService->Receive())
 	{
 		sysLog.Log("Message received successfully.");
 
 		// Process Message.
 		ProcessMessages();
+
+		timeoutTimer = theWorld.GetCurrentTimeSeconds();
 	}
 	else
 	{
-		// Timeout timer update.
+		if (_bot)
+			_bot->AIUpdate(_player);
 
-		// Dead reckoning.
-
-		// If timeout, alert user.
+		if (CheckTimeout())
+		{
+			// Lost connection.
+			_gameState = ConnectionLost;
+		}
 	}
 }
 
@@ -235,6 +274,22 @@ bool GameOverlord::CheckSnapshotTime()
 	}
 	else
 		return false;
+}
+
+bool GameOverlord::CheckTimeout()
+{
+	if (theWorld.GetTimeSinceSeconds(timeoutTimer) >= timeoutWaitTime)
+		return true;
+	else
+		return false;
+}
+
+void GameOverlord::OnConnectionLost()
+{
+	DrawGameText("CONNECTION TIMED OUT!! Press Q to quit.", "Console", theCamera.GetWindowWidth() / 2 - 150, theCamera.GetWindowHeight() / 2, 0.0f);
+
+	if (theInput.IsKeyDown('q'))
+		_gameState = Shutdown;
 }
 
 void GameOverlord::OnShutdown()
@@ -274,7 +329,7 @@ void GameOverlord::ProcessMessages()
 									  if (_player == NULL)
 									  {
 										  // Need to create player.
-										  _player = new Player(_networkService->getReceivedMessage().position, _networkService->getReceivedMessage().velocity);
+										  _player = new Player(false, _networkService->getReceivedMessage().position, _networkService->getReceivedMessage().velocity);
 									  }
 									  else
 									  {
@@ -289,7 +344,7 @@ void GameOverlord::ProcessMessages()
 									  if (_bot == NULL)
 									  {
 										  // Need to create player.
-										  _bot = new Player(_networkService->getReceivedMessage().position, _networkService->getReceivedMessage().velocity);
+										  _bot = new Player(true, _networkService->getReceivedMessage().position, _networkService->getReceivedMessage().velocity);
 									  }
 									  else
 									  {
@@ -298,6 +353,10 @@ void GameOverlord::ProcessMessages()
 										  _bot->GetBody()->SetLinearVelocity(b2Vec2(_networkService->getReceivedMessage().velocity.X, _networkService->getReceivedMessage().velocity.Y));
 									  }
 								  }
+		}
+		default:
+		{
+				   break;
 		}
 		}
 	}

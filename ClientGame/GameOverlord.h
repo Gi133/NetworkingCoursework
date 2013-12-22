@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <thread>
 
 #include "stdafx.h"
 #include "Player.h"
@@ -31,11 +32,14 @@ private:
 	void OnSetupSpectator(); // Function to initialize the spectator portion of the application.
 	void OnGame();
 	void OnSpectator();
+	void OnConnectionLost();
 	void OnShutdown();
 
 	void ProcessMessages(); // Process the network messages.
+	void OnGameNetworkThread();
 
 	bool CheckSnapshotTime(); // Returns true if it's time to send the snapshot.
+	bool CheckTimeout();
 
 	void FindWorldBounds(); // Find the max values for X and Y so that they can be used in collision detection.
 
@@ -53,7 +57,11 @@ private:
 	unsigned int spectatorNumber;
 	const unsigned int maxSpectatorNumber;
 
-	enum gameState{Initialization, Menu, SetupGame, SetupSpectator, Game, Spectator, Shutdown} _gameState;
+	// More network variables.
+	float timeoutTimer;
+	float timeoutWaitTime; // Max number of seconds to wait for connection restoration.
+
+	enum gameState{Initialization, Menu, SetupGame, SetupSpectator, Game, Spectator, ConnectionLost, Shutdown} _gameState;
 
 	Vector2 WorldMax, WorldMin;
 };
