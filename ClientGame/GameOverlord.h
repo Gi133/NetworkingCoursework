@@ -9,6 +9,8 @@
 
 #define theGameOverlord GameOverlord::getInstance()
 
+#define MAX_SPECTATOR_NUMBER 10
+
 class GameOverlord :
 	public GameManager
 {
@@ -31,6 +33,8 @@ private:
 	void OnSpectator();
 	void OnShutdown();
 
+	void ProcessMessages(); // Process the network messages.
+
 	bool CheckSnapshotTime(); // Returns true if it's time to send the snapshot.
 
 	void FindWorldBounds(); // Find the max values for X and Y so that they can be used in collision detection.
@@ -41,9 +45,13 @@ private:
 	NetworkService* _networkService;
 
 	Player* _player;
+	Player* _bot; // Yeah... that class name is quite amazing.
 
 	const float SNAPSHOT_TIME; // Update time (20ms)
 	float timer, snapshotTime;
+
+	unsigned int spectatorNumber;
+	const unsigned int maxSpectatorNumber;
 
 	enum gameState{Initialization, Menu, SetupGame, SetupSpectator, Game, Spectator, Shutdown} _gameState;
 

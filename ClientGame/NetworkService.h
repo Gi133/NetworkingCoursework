@@ -10,16 +10,17 @@
 class NetworkService
 {
 public:
-	NetworkService();
+	NetworkService(bool client);
 	~NetworkService();
 
-	bool InitializeWSA();
+	bool InitializeWSA(bool client);
 	void ShutdownWSA();
 
 	bool CreateSocket();
-	bool SetupSocketAddress(int portNumber = 4444);
+	bool SetupSocketAddressClient();
+	bool SetupSocketAddressSpectator();
 
-	bool WantToRead();
+	bool WantToRead(); // Never required in UDP since it's fire and forget. Added anyway in case ever want to add TCP support for chat.
 	bool WantToWrite();
 
 	bool Send(MessageType messageType, Player* objectToSend = NULL);
@@ -27,11 +28,13 @@ public:
 
 	NetworkMessage getReceivedMessage(){ return receivedMessage; }
 
+	bool CheckMessegeRelevant(); // Check if the net message received is newer than the last one.
+	
 	SOCKET getSocket(){ return sock; }
 
 private:
 	SOCKET sock;
-	sockaddr_in socketAddress;
+	sockaddr_in socketAddress, fromAddress, toAddress;
 
 	NetworkMessage* PackMessage(NetworkMessage* networkMessage, MessageType messageType, Player* objectToSend);
 	void UnpackMessage(NetworkMessage* networkMessage);
@@ -40,9 +43,13 @@ private:
 	char recv_buf_[sizeof NetworkMessage];
 	int recv_count_;
 	NetworkMessage receivedMessage;
+	int fromAddressSize;
 
 	// Buffer for outgoing messages.
 	char send_buf_[100 * sizeof NetworkMessage];
 	int send_count_;
+
+	// TimeStamp checking variables.
+	float oldTimeStamp;
 };
 

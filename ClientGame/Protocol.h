@@ -2,16 +2,15 @@
 
 #pragma once
 #include <string>
+#include "Player.h"
 
 // Message Types:
 enum MessageType
 {
 	NETMESSAGE_UNKNOWN = 0,
-	NETMESSAGE_CREATE_PLAYER = 1,
-	NETMESSAGE_CREATE_BOT = 2,
-	NETMESSAGE_UPDATE = 3,
-	NETMESSAGE_DELETE = 4,
-	NETMESSAGE_HANDSHAKE = 5
+	NETMESSAGE_UPDATE = 1,
+	NETMESSAGE_DELETE = 2,
+	NETMESSAGE_HANDSHAKE = 3
 };
 
 // Message struct.
@@ -21,8 +20,9 @@ struct  NetworkMessage
 
 	float timeStamp;
 
-	std::string objectID; // ID/Name of the object this message is referring to.
-	Vector2 position, force;
+	std::string ID;
+	Vector2 position;
+	Vector2 velocity;
 
-	NetworkMessage() :messageType(NETMESSAGE_UNKNOWN), timeStamp(0.0f), objectID(""), position(0.0f, 0.0f), force(0.0f, 0.0f) {}
+	NetworkMessage() :messageType(NETMESSAGE_UNKNOWN), timeStamp(0.0f), ID(""), position(0.0f, 0.0f), velocity(0.0f, 0.0f) {}
 };

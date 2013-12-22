@@ -2,11 +2,15 @@
 #include "NetworkService.h"
 
 
-NetworkService::NetworkService()
+NetworkService::NetworkService(bool client)
 {
-	InitializeWSA();
+	oldTimeStamp = 0;
+
+	sock = INVALID_SOCKET;
 
 	send_count_ = recv_count_ = 0;
+
+	InitializeWSA(client);
 }
 
 
@@ -14,7 +18,7 @@ NetworkService::~NetworkService()
 {
 }
 
-bool NetworkService::InitializeWSA()
+bool NetworkService::InitializeWSA(bool client)
 {
 	WSADATA w;
 	if (WSAStartup(0x0202, &w) != 0)
@@ -32,15 +36,26 @@ bool NetworkService::InitializeWSA()
 	if (!CreateSocket())
 		return false;
 
-	if (!SetupSocketAddress())
-		return false;
+	if (client)
+	{
+		// Set up client socket.
+		if(!SetupSocketAddressClient())
+			return false;
+	}
+	else
+	{
+		// Set up spectator socket.
+		if(!SetupSocketAddressSpectator())
+			return false;
+	}
 		
 	return true;
 }
 
 void NetworkService::ShutdownWSA()
 {
-	closesocket(sock);
+	if (sock != INVALID_SOCKET)
+		closesocket(sock);
 	WSACleanup();
 }
 
@@ -55,13 +70,49 @@ bool NetworkService::CreateSocket()
 	return true;
 }
 
-bool NetworkService::SetupSocketAddress(int portNumber)
+bool NetworkService::SetupSocketAddressClient()
 {
 	socketAddress.sin_family = AF_INET;
 	socketAddress.sin_addr.s_addr = INADDR_ANY; // UDP sockets should ideally be connectionless, so no need to force it to any ip.
-	socketAddress.sin_port = htons(portNumber);
+	socketAddress.sin_port = htons(4444);
+
+	toAddress.sin_family = AF_INET;
+	toAddress.sin_port = htons(4445);
+	toAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	fromAddress.sin_family = AF_INET;
+	fromAddress.sin_port = htons(4445);
+	fromAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+	fromAddressSize = sizeof(fromAddress);
 
 	if(bind(sock, (const sockaddr *)&socketAddress, sizeof(socketAddress)) != 0)
+	{
+		sysLog.Log("Server Socket bind failed.");
+		return false;
+	}
+	else
+	{
+		sysLog.Log("Server Socket bound to port.");
+		return true;
+	}
+}
+
+bool NetworkService::SetupSocketAddressSpectator()
+{
+	socketAddress.sin_family = AF_INET;
+	socketAddress.sin_addr.s_addr = INADDR_ANY; // UDP sockets should ideally be connectionless, so no need to force it to any ip.
+	socketAddress.sin_port = htons(4445);
+
+	toAddress.sin_family = AF_INET;
+	toAddress.sin_port = htons(4444);
+	toAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	fromAddress.sin_family = AF_INET;
+	fromAddress.sin_port = htons(4444);
+	fromAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+	fromAddressSize = sizeof(fromAddress);
+
+	if (bind(sock, (const sockaddr *)&socketAddress, sizeof(socketAddress)) != 0)
 	{
 		sysLog.Log("Server Socket bind failed.");
 		return false;
@@ -81,7 +132,7 @@ bool NetworkService::WantToRead()
 	fd.fd = sock;
 	fd.events = POLLIN;
 
-	result = WSAPoll(&fd, 1, 25);
+	result = WSAPoll(&fd, 1, 15);
 
 	if (result == 0)
 	{
@@ -95,7 +146,7 @@ bool NetworkService::WantToRead()
 	}
 	else
 	{
-		sysLog.Log("Data witting to be received.");
+		sysLog.Log("Data waiting to be received.");
 		return true;
 	}
 }
@@ -115,11 +166,6 @@ bool NetworkService::Send(MessageType messageType, Player* objectToSend)
 	memcpy(&send_buf_[send_count_], PackMessage(&networkMessage, messageType, objectToSend), sizeof(NetworkMessage));
 	send_count_ += sizeof(NetworkMessage);
 
-	sockaddr_in toAddress;
-	toAddress.sin_family = AF_INET;
-	toAddress.sin_port = htons(4444);
-	toAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-
 	int count = sendto(sock, send_buf_, send_count_, 0, (const sockaddr *)&toAddress, sizeof(toAddress));
 	if (count <= 0)
 	{
@@ -138,11 +184,8 @@ bool NetworkService::Send(MessageType messageType, Player* objectToSend)
 
 bool NetworkService::Receive()
 {
-	sockaddr_in fromAddress;
-	fromAddress.sin_family = AF_INET;
-	fromAddress.sin_port = htons(4444);
-	fromAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-	int fromAddressSize = sizeof(fromAddress);
+	if (!WantToRead())
+		return false;
 
 	// Receive as much data from the client as will fit in the buffer.
 	int count = recvfrom(sock, &recv_buf_[recv_count_], (sizeof recv_buf_) - recv_count_, 0, (sockaddr*)&fromAddress, &fromAddressSize);
@@ -170,11 +213,12 @@ NetworkMessage* NetworkService::PackMessage(NetworkMessage* _networkMessage, Mes
 	_networkMessage->messageType = _messageType;
 	_networkMessage->timeStamp = theWorld.GetCurrentTimeSeconds();
 
-	if (_messageType != NETMESSAGE_HANDSHAKE || _messageType != NETMESSAGE_UNKNOWN) // Object not required if any of those two.
+	if (_messageType == NETMESSAGE_UPDATE) // Object not required if any of those two.
 	{
-		_networkMessage->objectID = _objectToSend->GetName();
+		_networkMessage->ID = _objectToSend->GetName();
 		_networkMessage->position = _objectToSend->GetPosition();
-		_networkMessage->force = _objectToSend->getForce();
+		_networkMessage->velocity.X = _objectToSend->GetBody()->GetLinearVelocity().x;
+		_networkMessage->velocity.Y = _objectToSend->GetBody()->GetLinearVelocity().y;
 	}
 
 	return _networkMessage;
@@ -182,5 +226,26 @@ NetworkMessage* NetworkService::PackMessage(NetworkMessage* _networkMessage, Mes
 
 void NetworkService::UnpackMessage(NetworkMessage* networkMessage)
 {
-	networkMessage = &receivedMessage;
+	receivedMessage = *networkMessage;
+}
+
+bool NetworkService::CheckMessegeRelevant()
+{
+	if (oldTimeStamp != 0) // We have actually had an old timestamp to check against.
+	{
+		if (oldTimeStamp > receivedMessage.timeStamp)
+		{
+			// Message not relevant.
+			return false;
+		}
+		else
+		{
+			// Message is relevant. Update the oldTimeStamp value.
+			oldTimeStamp = receivedMessage.timeStamp;
+			return true;
+		}
+	}
+	else
+		oldTimeStamp = receivedMessage.timeStamp;
+	return true;
 }

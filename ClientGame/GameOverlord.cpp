@@ -11,7 +11,7 @@ GameOverlord& GameOverlord::getInstance()
 	return *_instance;
 }
 
-GameOverlord::GameOverlord() :SNAPSHOT_TIME (0.20f)
+GameOverlord::GameOverlord() :SNAPSHOT_TIME(0.20f), maxSpectatorNumber(MAX_SPECTATOR_NUMBER)
 {
 	_gameState = Initialization;
 }
@@ -29,32 +29,37 @@ void GameOverlord::Update()
 	{
 	case Initialization:
 	{
-		Init();
-		break;
+						   Init();
+						   break;
 	}
 	case Menu:
 	{
-		OnMenu();
-		break;
+				 OnMenu();
+				 break;
 	}
 	case SetupGame:
 	{
-		OnSetupGame();
-		break;
+					  OnSetupGame();
+					  break;
 	}
 	case SetupSpectator:
 	{
-		OnSetupSpectator();
-		break;
+						   OnSetupSpectator();
+						   break;
 	}
 	case Game:
 	{
-		OnGame();
-		break;
+				 OnGame();
+				 break;
+	}
+	case Spectator:
+	{
+					  OnSpectator();
+					  break;
 	}
 	case Shutdown:
 	{
-		OnShutdown();
+					 OnShutdown();
 	}
 	}
 }
@@ -72,18 +77,19 @@ void GameOverlord::Init()
 	theWorld.SetupPhysics(Vector2(0.0f, 0.0f));
 	theWorld.SetSideBlockers(true, 0.7f);
 
-	// Initialize the network.
-	_networkService = new NetworkService();
+	_networkService = NULL;
 
 	// Set player pointer to NULL.
 	_player = NULL;
+	_bot = NULL;
+
+	spectatorNumber = 0;
 
 	// Set full-screen background.
 	_fullScreenActor.SetSprite("Resources/Images/menubackground.jpg");
 	theWorld.Add(&_fullScreenActor);
 
 	// Register any custom fonts we may require.
-
 
 	// Change game state.
 	_gameState = Menu;
@@ -108,6 +114,9 @@ void GameOverlord::OnMenu()
 
 void GameOverlord::OnSetupGame()
 {
+	// Initialize the network.
+	_networkService = new NetworkService(false);
+
 	// Change background image.
 	_fullScreenActor.SetSprite("Resources/Images/gamebackground.jpg");
 
@@ -122,7 +131,41 @@ void GameOverlord::OnSetupGame()
 
 void GameOverlord::OnSetupSpectator()
 {
+	// Initialize the network.
+	_networkService = new NetworkService(true);
 
+	// Change background image.
+	_fullScreenActor.SetSprite("Resources/Images/gamebackground.jpg");
+
+	bool connected = false;
+	while (!connected)
+	{
+		DrawGameText("CONNECTING TO GAME SESSION...", "Console", theCamera.GetWindowWidth() / 3 * 2 - 150, theCamera.GetWindowHeight() / 3, 0.0f);
+
+		// Send Handshake to game client.
+		if (!_networkService->Send(NETMESSAGE_HANDSHAKE))
+			sysLog.Log("Error sending handshake message!");
+
+		// Receive handshake back
+		if (!_networkService->Receive())
+			sysLog.Log("Error receiving handshake message.");
+		else
+		{
+			// Message received, check if handshake.
+			if (_networkService->getReceivedMessage().messageType == NETMESSAGE_HANDSHAKE)
+			{
+				connected = true;
+				sysLog.Log("Connected to game.");
+			}
+		}
+
+		// You have connected.
+	}
+
+	// Set up the snapshot timer.
+	timer = theWorld.GetCurrentTimeSeconds();
+
+	_gameState = Spectator;
 }
 
 void GameOverlord::OnGame()
@@ -137,23 +180,49 @@ void GameOverlord::OnGame()
 	if (theInput.IsKeyDown('d'))
 		_player->ApplyHorizontalForce(1.0f);
 
+	// Check for handshakes and respond.
+	if (spectatorNumber < maxSpectatorNumber)
+	{
+		if (_networkService->Receive())
+		{
+			if (_networkService->getReceivedMessage().messageType == NETMESSAGE_HANDSHAKE)
+			{
+				sysLog.Log("Received Handshake, sending reply.");
+				_networkService->Send(NETMESSAGE_HANDSHAKE);
+				spectatorNumber++;
+			}
+		}
+	}
+
 	// Check if snapshot timer.
 	if (CheckSnapshotTime())
 	{
-		// Pack and send snapshot.
-		//sysLog.Log("Snapshot time!");
-		if (_networkService->Send(NETMESSAGE_UPDATE, _player))
-			sysLog.Log("Message sent successfully.");
-
-		if (_networkService->WantToRead())
-			if (_networkService->Receive())
-				sysLog.Log("Message received successfully.");
+		if (spectatorNumber > 0)
+		{
+			// Pack and send snapshot.
+			if (_networkService->Send(NETMESSAGE_UPDATE, _player))
+				sysLog.Log("Message sent successfully.");
+		}
 	}
 }
 
 void GameOverlord::OnSpectator()
 {
+	if (_networkService->Receive())
+	{
+		sysLog.Log("Message received successfully.");
 
+		// Process Message.
+		ProcessMessages();
+	}
+	else
+	{
+		// Timeout timer update.
+
+		// Dead reckoning.
+
+		// If timeout, alert user.
+	}
 }
 
 bool GameOverlord::CheckSnapshotTime()
@@ -170,15 +239,70 @@ bool GameOverlord::CheckSnapshotTime()
 
 void GameOverlord::OnShutdown()
 {
-	_networkService->ShutdownWSA();
-	delete (_networkService);
-	_networkService = NULL;
+	if (_networkService)
+	{
+		_networkService->ShutdownWSA();
+		delete (_networkService);
+		_networkService = NULL;
+	}
 
 	if (_player)
 	{
 		delete(_player);
 		_player = NULL;
 	}
-	
+
+	if (_bot)
+	{
+		delete(_bot);
+		_bot = NULL;
+	}
+
 	theWorld.StopGame();
+}
+
+void GameOverlord::ProcessMessages()
+{
+	if (_networkService->CheckMessegeRelevant())
+	{
+		switch (_networkService->getReceivedMessage().messageType)
+		{
+		case NETMESSAGE_UPDATE:
+		{
+								  if (_networkService->getReceivedMessage().ID == "Player")
+								  {
+									  if (_player == NULL)
+									  {
+										  // Need to create player.
+										  _player = new Player(_networkService->getReceivedMessage().position, _networkService->getReceivedMessage().velocity);
+									  }
+									  else
+									  {
+										  // Force the player into position.
+										  _player->GetBody()->SetTransform(b2Vec2(_networkService->getReceivedMessage().position.X, _networkService->getReceivedMessage().position.Y), 0.0f);
+										  _player->GetBody()->SetLinearVelocity(b2Vec2(_networkService->getReceivedMessage().velocity.X, _networkService->getReceivedMessage().velocity.Y));
+									  }
+								  }
+
+								  else if (_networkService->getReceivedMessage().ID == "Bot")
+								  {
+									  if (_bot == NULL)
+									  {
+										  // Need to create player.
+										  _bot = new Player(_networkService->getReceivedMessage().position, _networkService->getReceivedMessage().velocity);
+									  }
+									  else
+									  {
+										  // Force the player into position.
+										  _bot->GetBody()->SetTransform(b2Vec2(_networkService->getReceivedMessage().position.X, _networkService->getReceivedMessage().position.Y), 0.0f);
+										  _bot->GetBody()->SetLinearVelocity(b2Vec2(_networkService->getReceivedMessage().velocity.X, _networkService->getReceivedMessage().velocity.Y));
+									  }
+								  }
+		}
+		}
+	}
+	else
+	{
+		sysLog.Log("Message was irrelevant (newer data already received).");
+	}
 }

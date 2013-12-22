@@ -7,6 +7,8 @@ Player::Player()
 
 	_maxVx = _maxVy = 200.0f;
 
+	_vx = _vy = 0.0f;
+
 	// Set sprite and shape
 	this->SetColor(1.0f, 0.0f, 0.0f);
 	this->SetDrawShape(ADS_Circle);
@@ -22,6 +24,35 @@ Player::Player()
 	this->SetName("player");
 
 	this->InitPhysics();
+	theWorld.Add(this);
+}
+
+Player::Player(Vector2 force, Vector2 position)
+{
+	_speed = 100.0f;
+
+	_maxVx = _maxVy = 200.0f;
+
+	_vx = _vy = 0.0f;
+
+	// Set sprite and shape
+	this->SetColor(1.0f, 0.0f, 0.0f);
+	this->SetDrawShape(ADS_Circle);
+	this->SetSize(1.0f);
+
+	// Set physics related to this object.
+	this->SetDensity(0.5f);
+	this->SetFriction(0.1f);
+	this->SetRestitution(0.2f);
+	this->SetShapeType(PhysicsActor::SHAPETYPE_CIRCLE);
+	this->SetFixedRotation(true);
+
+	this->SetPosition(position);
+
+	this->SetName("player");
+
+	this->InitPhysics();
+	this->ApplyForce(force, 0.0f);
 	theWorld.Add(this);
 }
 
