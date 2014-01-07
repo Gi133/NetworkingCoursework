@@ -1,3 +1,6 @@
+// Required to run the application : http://www.microsoft.com/en-us/download/details.aspx?id=30679
+// Required to compile the project : Visual Studio 2012 or Visual Studio 2013
+
 #include "stdafx.h"
 #include "GameOverlord.h"
 
