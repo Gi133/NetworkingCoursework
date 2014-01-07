@@ -132,7 +132,7 @@ bool NetworkService::WantToRead()
 	fd.fd = sock;
 	fd.events = POLLIN;
 
-	result = WSAPoll(&fd, 1, 1);
+	result = WSAPoll(&fd, 1, 0);
 
 	if (result == 0)
 	{
@@ -233,7 +233,7 @@ bool NetworkService::CheckMessegeRelevant()
 {
 	if (oldTimeStamp != 0) // We have actually had an old timestamp to check against.
 	{
-		if (oldTimeStamp > receivedMessage.timeStamp)
+		if (oldTimeStamp >= receivedMessage.timeStamp)
 		{
 			// Message not relevant.
 			return false;

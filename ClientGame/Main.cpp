@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 	// Arguments to be passed into world initialization.
 	int _windowWidth = 1024;
 	int _windowHeight = 768;
-	std::string _windowName = "My First Angel Game";
+	std::string _windowName = "Networking Coursework Application";
 	bool _antiAliasing = true;
 	bool _fullScreen = false;
 	bool _resizable = false;

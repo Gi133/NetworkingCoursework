@@ -242,6 +242,8 @@ void GameOverlord::OnSpectator()
 	if (theInput.IsKeyDown('q'))
 		_gameState = Shutdown;
 
+	_bot->AIUpdate(_player);
+
 	if (_networkService->Receive())
 	{
 		sysLog.Log("Message received successfully.");
@@ -251,16 +253,13 @@ void GameOverlord::OnSpectator()
 
 		timeoutTimer = theWorld.GetCurrentTimeSeconds();
 	}
-	else
+	else if (CheckTimeout())
 	{
 		if (_bot)
 			_bot->AIUpdate(_player);
 
-		if (CheckTimeout())
-		{
-			// Lost connection.
-			_gameState = ConnectionLost;
-		}
+		// Lost connection.
+		_gameState = ConnectionLost;
 	}
 }
 

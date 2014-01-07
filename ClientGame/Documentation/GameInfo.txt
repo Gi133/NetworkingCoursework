@@ -1,16 +1,16 @@
-This file should contain: 
-    a) A basic setup for how to play your game
-    b) Any notes, stories, anecdotes, trials, or tribulations you wish to 
-       convey to someone who might one day download your game and not have 
-       you there to explain it to them. 
+Requirements to play this game/demo:
 
-Use the associated Attributions.txt for any assets or code you use that you 
-didn't create yourself from scratch. Be VERY careful with licensing. Creative 
-Commons is good, but make sure you give attribution. Open source code is also 
-OK, but make sure you understand the implications of the license.
+- UPD Ports 4444 and 4445 should be open and not used.
+- Visual C++ 2012 Redistributable is required due to the use of Box2D.
+	This can be found here: http://www.microsoft.com/en-us/download/details.aspx?id=30679
 
-Replace any text in this file with your own information. It *will* be copied
-to your final distribution directory when you build in Release mode, so if you
-still have this placeholder text here, you'll look mighty foolish.
+Controls:
+	WASD move the player ball around the playing field.
 
-And we wouldn't want that.
+Game Objective:
+	Avoid being hit by the AI ball, there is no death state though so you can not lose.
+
+How to use Spectator:
+	To use the spectator mode you must first launch the game and start playing normally, after this you just launch
+	the executable another time and select the spectate option, the game will appear to hang up while trying to connect to the game
+	and then it will synchronise with the game client once a connection has been made.
