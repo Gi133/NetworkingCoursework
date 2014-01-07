@@ -242,8 +242,6 @@ void GameOverlord::OnSpectator()
 	if (theInput.IsKeyDown('q'))
 		_gameState = Shutdown;
 
-	_bot->AIUpdate(_player);
-
 	if (_networkService->Receive())
 	{
 		sysLog.Log("Message received successfully.");

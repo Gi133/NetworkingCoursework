@@ -6,6 +6,7 @@ Requirements to play this game/demo:
 
 Controls:
 	WASD move the player ball around the playing field.
+	Q will quit the game or spectator mode.
 
 Game Objective:
 	Avoid being hit by the AI ball, there is no death state though so you can not lose.
