@@ -74,5 +74,6 @@
     <None Include="build.lua" />
     <None Include="Resources\Scripts\client_start.lua" />
     <None Include="script_interface.i" />
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

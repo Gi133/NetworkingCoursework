@@ -85,6 +85,7 @@ void GameOverlord::Init()
 	theWorld.SetSideBlockers(true, 0.7f);
 
 	_networkService = NULL;
+	_networkThread = NULL;
 
 	// Set player pointer to NULL.
 	_player = NULL;
@@ -137,6 +138,8 @@ void GameOverlord::OnSetupGame()
 
 	// Change game state.
 	_gameState = Game;
+
+	_networkThread = new std::thread(&GameOverlord::OnGameNetworkThread, this);
 }
 
 void GameOverlord::OnSetupSpectator()
@@ -180,8 +183,6 @@ void GameOverlord::OnSetupSpectator()
 
 void GameOverlord::OnGame()
 {
-	std::thread NetworkGameThread(&GameOverlord::OnGameNetworkThread, this);
-
 	// Process Input.
 	if (theInput.IsKeyDown('w'))
 		_player->ApplyVerticalForce(1.0f);
@@ -196,42 +197,43 @@ void GameOverlord::OnGame()
 
 	if (_bot)
 		_bot->AIUpdate(_player);
-
-	NetworkGameThread.join();
 }
 
 void GameOverlord::OnGameNetworkThread()
 {
-	// Check if snapshot timer.
-	if (CheckSnapshotTime())
+	while (_gameState == Game)
 	{
-		// Check for handshakes and respond.
-		if (spectatorNumber < maxSpectatorNumber)
+		// Check if snapshot timer.
+		if (CheckSnapshotTime())
 		{
-			if (_networkService->Receive())
+			// Check for handshakes and respond.
+			if (spectatorNumber < maxSpectatorNumber)
 			{
-				if (_networkService->getReceivedMessage().messageType == NETMESSAGE_HANDSHAKE)
+				if (_networkService->Receive())
 				{
-					sysLog.Log("Received Handshake, sending reply.");
-					_networkService->Send(NETMESSAGE_HANDSHAKE);
-					spectatorNumber++;
+					if (_networkService->getReceivedMessage().messageType == NETMESSAGE_HANDSHAKE)
+					{
+						sysLog.Log("Received Handshake, sending reply.");
+						_networkService->Send(NETMESSAGE_HANDSHAKE);
+						spectatorNumber++;
+					}
 				}
 			}
-		}
 
-		if (spectatorNumber > 0)
-		{
-			// Pack and send snapshot.
-			if (_player)
+			if (spectatorNumber > 0)
 			{
-				if (_networkService->Send(NETMESSAGE_UPDATE, _player))
-					sysLog.Log("Message sent successfully.");
-			}
+				// Pack and send snapshot.
+				if (_player)
+				{
+					if (_networkService->Send(NETMESSAGE_UPDATE, _player))
+						sysLog.Log("Message sent successfully.");
+				}
 
-			if (_bot)
-			{
-				if (_networkService->Send(NETMESSAGE_UPDATE, _bot))
-					sysLog.Log("Message sent successfully.");
+				if (_bot)
+				{
+					if (_networkService->Send(NETMESSAGE_UPDATE, _bot))
+						sysLog.Log("Message sent successfully.");
+				}
 			}
 		}
 	}
@@ -291,6 +293,11 @@ void GameOverlord::OnConnectionLost()
 
 void GameOverlord::OnShutdown()
 {
+	if (_networkThread)
+	{
+		_networkThread->join();
+	}
+
 	if (_networkService)
 	{
 		_networkService->ShutdownWSA();

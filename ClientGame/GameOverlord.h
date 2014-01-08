@@ -64,4 +64,6 @@ private:
 	enum gameState{Initialization, Menu, SetupGame, SetupSpectator, Game, Spectator, ConnectionLost, Shutdown} _gameState;
 
 	Vector2 WorldMax, WorldMin;
+
+	std::thread* _networkThread;
 };

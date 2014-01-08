@@ -233,7 +233,7 @@ bool NetworkService::CheckMessegeRelevant()
 {
 	if (oldTimeStamp != 0) // We have actually had an old timestamp to check against.
 	{
-		if (oldTimeStamp >= receivedMessage.timeStamp)
+		if (oldTimeStamp > receivedMessage.timeStamp)
 		{
 			// Message not relevant.
 			return false;

@@ -1,0 +1,17 @@
+Requirements to play this game/demo:
+
+- UPD Ports 4444 and 4445 should be open and not used.
+- Visual C++ 2012 Redistributable is required due to the use of Box2D.
+	This can be found here: http://www.microsoft.com/en-us/download/details.aspx?id=30679
+
+Controls:
+	WASD move the player ball around the playing field.
+	Q will quit the game or spectator mode.
+
+Game Objective:
+	Avoid being hit by the AI ball, there is no death state though so you can not lose.
+
+How to use Spectator:
+	To use the spectator mode you must first launch the game and start playing normally, after this you just launch
+	the executable another time and select the spectate option, the game will appear to hang up while trying to connect to the game
+	and then it will synchronise with the game client once a connection has been made.

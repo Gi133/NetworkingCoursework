@@ -196,6 +196,7 @@ cd ..\Tools\BuildScripts\
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ClassDiagram.cd" />
     <None Include="Config\defaults.lua" />
     <None Include="Config\input_bindings.ini" />
     <None Include="Config\tuning.lua" />
